@@ -1,0 +1,5 @@
+aws_account_name: "" # 用AWSアカウント
+slack_config:
+  token:   "" # Slack APP トークン xoxb-xxxxxxxx
+  channel: "" # Slack チャンネル名 #xxxxxx
+  mention: "" # メンション先 @<!subteam^xxxx>

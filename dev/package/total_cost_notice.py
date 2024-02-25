@@ -1,0 +1,64 @@
+import datetime
+import yaml
+import pytz
+import boto3
+from slack_sdk import WebClient
+
+# 設定ファイルを読み込み
+def load_config(config_file_path):
+  with open(config_file_path, 'r') as yml:
+    config = yaml.safe_load(yml)
+  
+  return config
+
+# 月額の利用料を取得
+def get_monthly_cost(start_date, end_date):
+  client = boto3.client('ce', region_name='us-east-1')
+
+  response = client.get_cost_and_usage(
+    TimePeriod={
+        'Start': start_date,
+        'End': end_date
+    },
+    Granularity='MONTHLY',
+    Metrics=['BlendedCost']
+)
+  #小数点第3位を切り捨て
+  monthly_cost = round(float(response["ResultsByTime"][0]["Total"]["BlendedCost"]["Amount"]), 2)
+
+  return monthly_cost
+
+# Slackに通知する処理
+def post_slack(slack_config, message_text):
+  attachments = [
+    {
+      "fallback":"aws cost notification",
+      "color":"#2cb47c",
+      "fields":[
+          {
+            "title":"AWSコスト通知",
+            "value":slack_config["mention"] + "\n" + message_text
+          }
+      ]
+    }
+  ]
+
+  client = WebClient(slack_config["token"])
+  result = client.chat_postMessage(channel = slack_config["channel"], attachments = attachments)
+
+def lambda_handler(event, context):
+  # 日付を取得
+  now = datetime.datetime.now(pytz.timezone('Asia/Tokyo'))
+  yesterday = (now - datetime.timedelta(days=1))
+  yesterday_str = yesterday.strftime('%Y-%m-%d')
+  this_month_first_day_str = datetime.datetime(yesterday.year, yesterday.month, 1).strftime('%Y-%m-%d')
+
+  # 設定ファイルを読み込み
+  config = load_config("./config.yml")
+
+  # 当月の利用料を取得
+  monthly_cost = get_monthly_cost(this_month_first_day_str , yesterday_str)
+
+  message = f'{config["aws_account_name"]}の{yesterday_str}までの{yesterday.month}月分の利用料金は{monthly_cost}USDです。'
+  print(message)
+  post_slack(config["slack_config"], message)
