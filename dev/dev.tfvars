@@ -14,5 +14,5 @@ cost_notice_lambda_vars = {
 cost_notice_cloudwatch_event_vars = {
   name        = "cost-notice-schedule"
   description = "Invoke lambda function every hour", 
-  schedule_expression = "cron(0 9 * * ? *)"
+  schedule_expression = "cron(0 0 * * ? *)" # UTCの0時、JSTの9時
 }
